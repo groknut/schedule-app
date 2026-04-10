@@ -1,5 +1,5 @@
 [project]
-name = "schedule-app-fixed"
+name = "schedule-app"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
