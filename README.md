@@ -28,9 +28,9 @@ uv sync
 ```
 ### 2. Запустить сервер
 ```bash
-cd backend
-python main.py
+python backend/main.py
 # или: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# или uv run backend/main.py
 ```
 
 ### 3. Открыть браузер
