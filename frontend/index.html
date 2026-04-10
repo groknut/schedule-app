@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ГрафикПро — Планирование рабочего времени</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── CSS Variables ─────────────────────────────────────────────────── */
+    :root {
+      --navy:    #0F2340;
+      --navy2:   #1E3A5F;
+      --navy3:   #2C527A;
+      --amber:   #F5A623;
+      --amber2:  #FFB944;
+      --teal:    #17B8A6;
+      --red:     #E5534B;
+      --green:   #3CBF7F;
+      --sky:     #5AB3F0;
+      --bg:      #F4F7FB;
+      --bg2:     #FFFFFF;
+      --text:    #1A2636;
+      --text2:   #5A6E84;
+      --border:  #D8E3EE;
+      --shadow:  0 2px 16px rgba(15,35,64,.10);
+      --shadow2: 0 4px 24px rgba(15,35,64,.18);
+      --radius:  12px;
+      --radius2: 8px;
+    }
+
+    /* ── Reset & Base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      box-shadow: 4px 0 24px rgba(0,0,0,.2);
+    }
+    .sidebar-logo {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .logo-text {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -.5px;
+    }
+    .logo-text span { color: var(--amber); }
+    .logo-sub {
+      font-size: .7rem;
+      color: rgba(255,255,255,.4);
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .sidebar-section { padding: 16px 0 4px; }
+    .sidebar-section-label {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.3);
+      padding: 0 24px 8px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      cursor: pointer;
+      color: rgba(255,255,255,.55);
+      font-size: .88rem;
+      font-weight: 500;
+      transition: all .15s;
+      border-left: 3px solid transparent;
+      text-decoration: none;
+    }
+    .nav-item:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .nav-item.active {
+      color: #fff;
+      background: rgba(245,166,35,.1);
+      border-left-color: var(--amber);
+    }
+    .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+
+    .sidebar-user {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .user-selector {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius2);
+      padding: 8px 10px;
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-size: .82rem;
+      width: 100%;
+      cursor: pointer;
+      outline: none;
+    }
+    .user-selector option { background: var(--navy2); }
+    .user-label {
+      font-size: .65rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    /* ── Main ───────────────────────────────────────────────────────────── */
+    .main {
+      margin-left: 240px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0;
+      z-index: 50;
+    }
+    .topbar-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+    .content { padding: 28px 32px; flex: 1; }
+
+    /* ── Pages ──────────────────────────────────────────────────────────── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: .75rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--navy); margin: 6px 0 2px; line-height: 1; }
+    .stat-sub { font-size: .78rem; color: var(--text2); }
+    .stat-card.amber .stat-value { color: var(--amber); }
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-card.teal .stat-value { color: var(--teal); }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      padding: 9px 18px;
+      border-radius: var(--radius2);
+      border: none;
+      font-family: 'Manrope', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--navy2); color: #fff; }
+    .btn-primary:hover { background: var(--navy3); }
+    .btn-amber { background: var(--amber); color: var(--navy); }
+    .btn-amber:hover { background: var(--amber2); }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-sm { padding: 5px 12px; font-size: .8rem; }
+
+    /* ── Calendar ───────────────────────────────────────────────────────── */
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: var(--radius2);
+      border: 1px solid var(--border);
+    }
+    .view-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      font-family: 'Manrope', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all .15s;
+    }
+    .view-btn.active {
+      background: var(--bg2);
+      color: var(--navy);
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cal-nav-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem;
+      color: var(--text2);
+      transition: all .15s;
+    }
+    .cal-nav-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .cal-month-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy);
+      min-width: 160px;
+      text-align: center;
+    }
+
+    /* Month view */
+    .cal-month {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .cal-dow {
+      background: var(--navy);
+      color: rgba(255,255,255,.7);
+      text-align: center;
+      padding: 10px 0;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+    }
+    .cal-cell {
+      background: var(--bg2);
+      min-height: 90px;
+      padding: 6px 8px;
+      cursor: pointer;
+      transition: background .1s;
+      position: relative;
+    }
+    .cal-cell:hover { background: #F0F6FF; }
+    .cal-cell.other-month { background: #F9FAFC; }
+    .cal-cell.today { background: #FFF8EC; }
+    .cal-cell.today .cal-day { color: var(--amber); font-weight: 800; }
+    .cal-cell.selected { background: #EBF6FF; outline: 2px solid var(--sky); }
+    .cal-day {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .cal-cell.other-month .cal-day { color: var(--border); }
+    .shift-pill {
+      background: var(--navy2);
+      color: #fff;
+      border-radius: 4px;
+      font-size: .68rem;
+      font-weight: 600;
+      padding: 2px 5px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .shift-pill:hover { background: var(--navy3); }
+    .shift-pill.confirmed { background: var(--green); }
+    .shift-pill.rejected { background: var(--red); }
+    .shift-pill.draft { background: var(--navy2); }
+
+    /* Week view */
+    .cal-week {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .week-header {
+      display: grid;
+      grid-template-columns: 80px repeat(7, 1fr);
+      background: var(--navy);
+    }
+    .week-header-cell {
+      padding: 12px 8px;
+      color: rgba(255,255,255,.7);
+      font-size: .75rem;
+      font-weight: 700;
+      text-align: center;
+      border-right: 1px solid rgba(255,255,255,.08);
+    }
+    .week-body {
+      display: grid;
+      grid-template-columns: 80px repeat(7, 1fr);
+    }
+    .week-time-col {
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+    }
+    .week-time-slot {
+      height: 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 10px;
+      font-size: .7rem;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text2);
+    }
+    .week-day-col {
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .week-slot {
+      height: 40px;
+      border-bottom: 1px solid var(--bg);
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .week-slot:hover { background: #F0F6FF; }
+    .week-shift {
+      position: absolute;
+      left: 4px; right: 4px;
+      background: var(--navy2);
+      border-radius: 6px;
+      color: #fff;
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 4px 6px;
+      z-index: 2;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .week-shift.confirmed { background: var(--green); }
+    .week-shift.rejected { background: var(--red); }
+
+    /* Day view */
+    .day-view {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .day-view-header {
+      background: var(--navy);
+      color: #fff;
+      padding: 14px 20px;
+      font-size: .9rem;
+      font-weight: 700;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .day-shift-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 14px;
+    }
+    .day-shift-row:last-child { border-bottom: none; }
+    .day-emp-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--navy2);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: .85rem;
+      flex-shrink: 0;
+    }
+    .day-emp-name { font-weight: 600; font-size: .88rem; flex: 1; }
+    .day-shift-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .82rem;
+      color: var(--navy2);
+      font-weight: 500;
+    }
+
+    /* ── Modal ──────────────────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(15,35,64,.55);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      width: 480px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title { font-size: 1rem; font-weight: 700; color: var(--navy); }
+    .modal-close {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg);
+      cursor: pointer;
+      color: var(--text2);
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .1s;
+    }
+    .modal-close:hover { background: var(--border); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ── Form ───────────────────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--text2);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius2);
+      font-family: 'Manrope', sans-serif;
+      font-size: .88rem;
+      color: var(--text);
+      background: var(--bg2);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-control:focus { border-color: var(--navy2); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Table ──────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .84rem;
+    }
+    thead th {
+      background: var(--navy);
+      color: rgba(255,255,255,.75);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:hover { background: #F5F8FD; }
+    tbody td { padding: 10px 14px; color: var(--text); }
+    .mono { font-family: 'IBM Plex Mono', monospace; font-size: .82rem; }
+
+    /* ── Badges ─────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 700;
+    }
+    .badge-draft    { background: #EEF2F8; color: var(--navy2); }
+    .badge-confirmed{ background: #E3F9EE; color: #1A8A52; }
+    .badge-rejected { background: #FDEAEA; color: var(--red); }
+
+    /* ── Filters bar ────────────────────────────────────────────────────── */
+    .filters {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .filter-select {
+      padding: 7px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius2);
+      font-family: 'Manrope', sans-serif;
+      font-size: .84rem;
+      color: var(--text);
+      background: var(--bg2);
+      outline: none;
+      cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--navy2); }
+
+    /* ── Workload Bar chart ─────────────────────────────────────────────── */
+    .workload-bar-wrap { margin-bottom: 6px; }
+    .workload-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .8rem;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    .workload-bar-track {
+      height: 10px;
+      background: var(--bg);
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .workload-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--navy2), var(--sky));
+      border-radius: 5px;
+      transition: width .6s ease;
+    }
+
+    /* ── Toast ──────────────────────────────────────────────────────────── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--navy);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: var(--radius2);
+      font-size: .84rem;
+      font-weight: 600;
+      box-shadow: var(--shadow2);
+      animation: toastIn .2s ease;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      max-width: 320px;
+    }
+    .toast.success { border-left: 4px solid var(--green); }
+    .toast.error   { border-left: 4px solid var(--red); }
+    @keyframes toastIn {
+      from { transform: translateX(40px); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { width: 200px; }
+      .main { margin-left: 200px; }
+      .content { padding: 16px; }
+    }
+    @media (max-width: 600px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+    }
+
+    /* ── Misc ───────────────────────────────────────────────────────────── */
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .flex-gap { display: flex; align-items: center; gap: 10px; }
+    .text-muted { color: var(--text2); font-size: .82rem; }
+    .mt-8  { margin-top: 8px; }
+    .mb-16 { margin-bottom: 16px; }
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+      color: var(--text2);
+      font-size: .9rem;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .separator { height: 1px; background: var(--border); margin: 20px 0; }
+
+    .tree-item { padding-left: 0; }
+    .tree-child { padding-left: 20px; border-left: 2px solid var(--border); margin-left: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Экран входа ─────────────────────────────────────────────────────────── -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+">
+  <div style="
+    background:var(--bg2);border-radius:16px;
+    padding:40px 44px;width:100%;max-width:400px;
+    box-shadow:0 8px 48px rgba(0,0,0,.4);
+  ">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:1.6rem;font-weight:800;color:var(--navy);">График<span style="color:var(--amber);">Про</span></div>
+      <div style="font-size:.8rem;color:var(--text2);margin-top:4px;letter-spacing:1px;text-transform:uppercase;">Планирование рабочего времени</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:.8rem;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Email</label>
+      <input id="loginEmail" type="email" placeholder="ivanov@tech.ru"
+        style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;outline:none;font-family:inherit;"
+        onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:.8rem;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Пароль</label>
+      <input id="loginPass" type="password" placeholder="••••••••"
+        style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;outline:none;font-family:inherit;"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="loginError" style="display:none;background:#fef2f2;color:#E5534B;border:1px solid #fecaca;border-radius:6px;padding:8px 12px;font-size:.85rem;margin-bottom:14px;"></div>
+    <button onclick="doLogin()" id="loginBtn"
+      style="width:100%;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;">
+      Войти
+    </button>
+    <div style="margin-top:18px;padding:12px;background:var(--bg);border-radius:8px;font-size:.78rem;color:var(--text2);">
+      <b>Тестовые аккаунты:</b><br>
+      admin@tech.ru / admin123 (Администратор)<br>
+      ivanov@tech.ru / manager123 (Менеджер)<br>
+      petrova@tech.ru / employee123 (Сотрудник)
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">График<span>Про</span></div>
+    <div class="logo-sub">Schedule Manager</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Основное</div>
+    <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <span class="nav-icon">📊</span> Дашборд
+    </a>
+    <a class="nav-item" data-page="calendar" onclick="navigate('calendar')">
+      <span class="nav-icon">📅</span> Мой график
+    </a>
+    <a class="nav-item" data-page="team" onclick="navigate('team')" data-role-min="manager">
+      <span class="nav-icon">👥</span> График команды
+    </a>
+  </div>
+
+  <div class="sidebar-section" data-role-min="manager">
+    <div class="sidebar-section-label">Управление</div>
+    <a class="nav-item" data-page="confirm" onclick="navigate('confirm')" data-role-min="manager">
+      <span class="nav-icon">✅</span> Подтверждение
+    </a>
+    <a class="nav-item" data-page="reports" onclick="navigate('reports')" data-role-min="manager">
+      <span class="nav-icon">📈</span> Отчёты план/факт
+    </a>
+    <a class="nav-item" data-page="export" onclick="navigate('export')" data-role-min="manager">
+      <span class="nav-icon">📥</span> Выгрузка в Excel
+    </a>
+  </div>
+
+  <div class="sidebar-section" data-role-min="admin">
+    <div class="sidebar-section-label">Организация</div>
+    <a class="nav-item" data-page="employees" onclick="navigate('employees')" data-role-min="admin">
+      <span class="nav-icon">🧑‍💼</span> Сотрудники
+    </a>
+    <a class="nav-item" data-page="orgs" onclick="navigate('orgs')" data-role-min="admin">
+      <span class="nav-icon">🏢</span> Организации
+    </a>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-label">Вы вошли как</div>
+    <div id="sidebarUserName" style="color:#fff;font-weight:700;font-size:.9rem;margin-bottom:4px;">—</div>
+    <div id="sidebarUserRole" style="color:rgba(255,255,255,.45);font-size:.75rem;margin-bottom:10px;">—</div>
+    <button onclick="logout()" style="width:100%;padding:7px;background:rgba(229,83,75,.15);color:#E5534B;border:1px solid rgba(229,83,75,.3);border-radius:6px;cursor:pointer;font-size:.82rem;font-weight:600;">Выйти</button>
+  </div>
+</aside>
+
+<!-- Main content -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Дашборд</div>
+    <div class="topbar-actions">
+      <button class="btn btn-amber" onclick="openShiftModal()">➕ Добавить смену</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="card-grid" id="dashStats"></div>
+      <div class="card">
+        <div class="card-title">📊 Нагрузка по сотрудникам (план, 14 дней)</div>
+        <div id="workloadChart"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Ближайшие смены</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Сотрудник</th><th>Дата</th><th>Начало</th><th>Конец</th>
+                <th>Часов</th><th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="upcomingShiftsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY CALENDAR -->
+    <div class="page" id="page-calendar">
+      <div class="card">
+        <div class="cal-header">
+          <div class="flex-gap">
+            <div class="cal-nav">
+              <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+              <div class="cal-month-label" id="calLabel">—</div>
+              <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="calToday()">Сегодня</button>
+          </div>
+          <div class="view-toggle">
+            <button class="view-btn active" id="vbMonth" onclick="setView('month')">Месяц</button>
+            <button class="view-btn" id="vbWeek" onclick="setView('week')">Неделя</button>
+            <button class="view-btn" id="vbDay" onclick="setView('day')">День</button>
+          </div>
+        </div>
+        <div id="calendarBody"></div>
+      </div>
+    </div>
+
+    <!-- TEAM VIEW -->
+    <div class="page" id="page-team">
+      <div class="card">
+        <div class="flex-between mb-16">
+          <div class="card-title" style="margin:0">👥 График команды</div>
+          <div class="filters">
+            <select class="filter-select" id="teamFilterSelect" onchange="loadTeamCalendar()">
+              <option value="">Все команды</option>
+            </select>
+            <input type="date" class="filter-select" id="teamDateFrom" onchange="loadTeamCalendar()" />
+            <input type="date" class="filter-select" id="teamDateTo" onchange="loadTeamCalendar()" />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Сотрудник</th><th>Команда</th><th>Дата</th><th>День</th>
+                <th>Начало</th><th>Конец</th><th>Часов</th><th>Статус</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="teamShiftsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM -->
+    <div class="page" id="page-confirm">
+      <div class="card">
+        <div class="card-title">✅ Подтверждение смен (план/факт)</div>
+        <div class="filters">
+          <select class="filter-select" id="confirmTeamSelect" onchange="loadConfirmShifts()">
+            <option value="">Все команды</option>
+          </select>
+          <input type="date" class="filter-select" id="confirmDateFrom" />
+          <input type="date" class="filter-select" id="confirmDateTo" />
+          <button class="btn btn-primary btn-sm" onclick="loadConfirmShifts()">🔍 Найти</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Сотрудник</th><th>Дата</th><th>Начало план</th><th>Конец план</th>
+                <th>Начало факт</th><th>Конец факт</th><th>Статус</th><th>Действие</th>
+              </tr>
+            </thead>
+            <tbody id="confirmTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="card">
+        <div class="card-title">📈 Отчёт план/факт</div>
+        <div class="filters">
+          <select class="filter-select" id="reportTeamSelect">
+            <option value="">Все команды</option>
+          </select>
+          <input type="date" class="filter-select" id="reportDateFrom" />
+          <input type="date" class="filter-select" id="reportDateTo" />
+          <button class="btn btn-primary btn-sm" onclick="loadReport()">Сформировать</button>
+        </div>
+        <div id="reportSummaryCards" class="card-grid" style="margin-top:16px"></div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead>
+              <tr>
+                <th>Сотрудник</th><th>Дата</th>
+                <th>Начало план</th><th>Конец план</th><th>Ч план</th>
+                <th>Начало факт</th><th>Конец факт</th><th>Ч факт</th>
+                <th>Δ</th><th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="reportTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="page" id="page-export">
+      <div class="card" style="max-width:500px">
+        <div class="card-title">📥 Выгрузка графика в Excel</div>
+        <div class="form-group">
+          <label class="form-label">Организация</label>
+          <select class="form-control" id="exportOrgSelect" onchange="loadExportTeams()">
+            <option value="">Все организации</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Подразделение</label>
+          <select class="form-control" id="exportTeamSelect">
+            <option value="">Все подразделения</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Дата с</label>
+            <input type="date" class="form-control" id="exportDateFrom" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Дата по</label>
+            <input type="date" class="form-control" id="exportDateTo" />
+          </div>
+        </div>
+        <div class="separator"></div>
+        <button class="btn btn-amber" style="width:100%;justify-content:center" onclick="doExport()">
+          ⬇️ Скачать Excel (.xlsx)
+        </button>
+        <p class="text-muted mt-8">
+          Файл содержит листы «График работы» (разбивка по дням) и «Сводка» (итоги по сотрудникам).
+        </p>
+      </div>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <div class="page" id="page-employees">
+      <div class="card">
+        <div class="flex-between mb-16">
+          <div class="card-title" style="margin:0">🧑‍💼 Сотрудники</div>
+          <button class="btn btn-primary btn-sm" onclick="openEmpModal()">➕ Добавить</button>
+        </div>
+        <div class="filters">
+          <select class="filter-select" id="empTeamFilter" onchange="loadEmployees()">
+            <option value="">Все команды</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Имя</th><th>Email</th><th>Должность</th><th>Команда</th><th>Роль</th><th></th></tr>
+            </thead>
+            <tbody id="empTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORGS -->
+    <div class="page" id="page-orgs">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="flex-between mb-16">
+            <div class="card-title" style="margin:0">🏢 Организации</div>
+            <button class="btn btn-primary btn-sm" onclick="openOrgModal()">➕ Добавить</button>
+          </div>
+          <div id="orgList"></div>
+        </div>
+        <div class="card">
+          <div class="flex-between mb-16">
+            <div class="card-title" style="margin:0">🗂 Команды</div>
+            <button class="btn btn-primary btn-sm" onclick="openTeamModal()">➕ Добавить</button>
+          </div>
+          <div id="teamList"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ── Modals ──────────────────────────────────────────────────────────────── -->
+
+<!-- Shift Modal -->
+<div class="modal-overlay" id="shiftModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="shiftModalTitle">Новая смена</div>
+      <button class="modal-close" onclick="closeModal('shiftModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="shiftId" />
+      <div class="form-group">
+        <label class="form-label">Сотрудник</label>
+        <select class="form-control" id="shiftEmployee"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Дата</label>
+        <input type="date" class="form-control" id="shiftDate" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Начало смены</label>
+          <input type="time" class="form-control" id="shiftStart" value="09:00" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Конец смены</label>
+          <input type="time" class="form-control" id="shiftEnd" value="18:00" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Тип</label>
+        <select class="form-control" id="shiftType">
+          <option value="planned">Плановая</option>
+          <option value="actual">Фактическая</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Примечание</label>
+        <input type="text" class="form-control" id="shiftNotes" placeholder="Необязательно" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('shiftModal')">Отмена</button>
+      <button class="btn btn-amber" onclick="saveShift()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Подтверждение смены</div>
+      <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="confirmShiftId" />
+      <div id="confirmShiftInfo" style="background:var(--bg);padding:12px;border-radius:var(--radius2);margin-bottom:16px;font-size:.88rem;"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Факт начало</label>
+          <input type="time" class="form-control" id="factStart" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Факт конец</label>
+          <input type="time" class="form-control" id="factEnd" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Решение</label>
+        <select class="form-control" id="confirmDecision">
+          <option value="confirmed">✅ Подтвердить</option>
+          <option value="rejected">❌ Отклонить</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('confirmModal')">Отмена</button>
+      <button class="btn btn-success" onclick="submitConfirm()">Сохранить решение</button>
+    </div>
+  </div>
+</div>
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="empModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Новый сотрудник</div>
+      <button class="modal-close" onclick="closeModal('empModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Имя</label>
+        <input type="text" class="form-control" id="empName" placeholder="Иванов Иван" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" id="empEmail" placeholder="email@company.ru" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль (мин. 8 символов)</label>
+        <input type="password" class="form-control" id="empPassword" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Должность</label>
+          <input type="text" class="form-control" id="empPosition" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Роль</label>
+          <select class="form-control" id="empRole">
+            <option value="employee">Сотрудник</option>
+            <option value="manager">Руководитель</option>
+            <option value="admin">Администратор</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Команда</label>
+        <select class="form-control" id="empTeam"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('empModal')">Отмена</button>
+      <button class="btn btn-amber" onclick="saveEmployee()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Org Modal -->
+<div class="modal-overlay" id="orgModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Новая организация</div>
+      <button class="modal-close" onclick="closeModal('orgModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Название</label>
+        <input type="text" class="form-control" id="orgName" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Описание</label>
+        <input type="text" class="form-control" id="orgDesc" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('orgModal')">Отмена</button>
+      <button class="btn btn-amber" onclick="saveOrg()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Team Modal -->
+<div class="modal-overlay" id="teamModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Новая команда</div>
+      <button class="modal-close" onclick="closeModal('teamModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Название</label>
+        <input type="text" class="form-control" id="teamName" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Организация</label>
+        <select class="form-control" id="teamOrgSelect"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Родительская команда (для вложенности)</label>
+        <select class="form-control" id="teamParentSelect">
+          <option value="">— нет (корневая) —</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('teamModal')">Отмена</button>
+      <button class="btn btn-amber" onclick="saveTeam()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── JavaScript ──────────────────────────────────────────────────────────── -->
+<script>
+const API = '';  // same origin; change to 'http://localhost:8000' for dev
+
+/* ─── Auth State ─────────────────────────────────────────────────────────── */
+let accessToken = localStorage.getItem('access_token') || null;
+let refreshToken = localStorage.getItem('refresh_token') || null;
+
+/* ─── State ──────────────────────────────────────────────────────────────── */
+let currentUser = null;
+let allEmployees = [];
+let allTeams = [];
+let allOrgs = [];
+let allShifts = [];
+
+let calDate = new Date();
+let calView = 'month'; // month | week | day
+
+const WEEKDAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const STATUS_LABEL = {draft:'Черновик', confirmed:'Подтверждено', rejected:'Отклонено'};
+const STATUS_BADGE = {draft:'badge-draft', confirmed:'badge-confirmed', rejected:'badge-rejected'};
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+
+/**
+ * Универсальная обёртка над fetch.
+ * Автоматически прикрепляет Bearer-токен, при 401 пробует refresh, при неудаче — logout.
+ */
+async function api(method, path, body, _retry = false) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+
+  const r = await fetch(API + path, opts);
+
+  // Попытка тихого обновления токена при 401
+  if (r.status === 401 && !_retry && refreshToken) {
+    const ok = await tryRefreshToken();
+    if (ok) return api(method, path, body, true);
+    logout();
+    return;
+  }
+
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: r.statusText }));
+    let msg;
+    if (typeof err.detail === 'string') {
+      msg = err.detail;
+    } else if (Array.isArray(err.detail)) {
+      msg = err.detail.map(e => {
+        const field = e.loc ? e.loc.slice(1).join('.') : '';
+        return field ? `${field}: ${e.msg}` : e.msg;
+      }).join('; ');
+    } else if (err.detail && typeof err.detail === 'object') {
+      msg = JSON.stringify(err.detail);
+    } else {
+      msg = r.statusText || `HTTP ${r.status}`;
+    }
+    throw new Error(msg);
+  }
+  if (r.status === 204) return null;
+  return r.json();
+}
+
+/** Попытка обновить access-токен через refresh. Возвращает true при успехе. */
+async function tryRefreshToken() {
+  try {
+    const r = await fetch(API + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    accessToken = data.access_token;
+    refreshToken = data.refresh_token;
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Вход: получаем токены, грузим профиль, показываем приложение. */
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  const btn   = document.getElementById('loginBtn');
+
+  if (!email || !pass) {
+    errEl.textContent = 'Введите email и пароль';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.textContent = 'Вход...';
+  btn.disabled = true;
+
+  try {
+    // OAuth2PasswordRequestForm требует form-encoded
+    const body = new URLSearchParams({ username: email, password: pass });
+    const r = await fetch(API + '/auth/login', { method: 'POST', body });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || 'Неверный email или пароль');
+    }
+    const data = await r.json();
+    accessToken  = data.access_token;
+    refreshToken = data.refresh_token;
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
+
+    await startApp();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = 'Войти';
+    btn.disabled = false;
+  }
+}
+
+/** Выход: чистим токены, показываем экран входа. */
+function logout() {
+  accessToken = null;
+  refreshToken = null;
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  currentUser = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+
+
+function fmt(d)  { return d ? new Date(d + 'T00:00').toLocaleDateString('ru') : '—'; }
+function fmtT(t) { return t ? t.slice(0,5) : '—'; }
+function hours(s,e) {
+  if (!s || !e) return '—';
+  const [sh,sm] = s.split(':').map(Number), [eh,em] = e.split(':').map(Number);
+  return ((eh*60+em - sh*60-sm)/60).toFixed(1);
+}
+function isoDate(d) { return d.toISOString().slice(0,10); }
+function today() { return isoDate(new Date()); }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = type === 'success' ? '✓ ' + msg : '✗ ' + msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.page === page);
+  });
+  const titles = {
+    dashboard:'Дашборд', calendar:'Мой график', team:'График команды',
+    confirm:'Подтверждение', reports:'Отчёты', export:'Выгрузка Excel',
+    employees:'Сотрудники', orgs:'Организации'
+  };
+  document.getElementById('topbarTitle').textContent = titles[page] || page;
+  if (page === 'calendar')   renderCalendar();
+  if (page === 'team')       loadTeamCalendar();
+  if (page === 'dashboard')  loadDashboard();
+  if (page === 'confirm')    loadConfirmShifts();
+  if (page === 'reports')    { /* user clicks button */ }
+  if (page === 'employees')  loadEmployees();
+  if (page === 'orgs')       loadOrgs();
+}
+
+/* ─── Startup ─────────────────────────────────────────────────────────────── */
+/**
+ * startApp — вызывается после успешного логина.
+ * Загружает профиль текущего пользователя и общие данные,
+ * скрывает экран входа, настраивает UI под роль.
+ */
+async function startApp() {
+  try {
+    // Загружаем профиль из токена
+    currentUser = await api('GET', '/auth/me');
+  } catch(e) {
+    toast('Не удалось загрузить профиль. ' + e.message, 'error');
+    logout();
+    return;
+  }
+
+  // Показываем имя и роль в сайдбаре
+  const ROLE_RU = { admin: 'Администратор', manager: 'Руководитель', employee: 'Сотрудник' };
+  document.getElementById('sidebarUserName').textContent = currentUser.name;
+  document.getElementById('sidebarUserRole').textContent = ROLE_RU[currentUser.role] || currentUser.role;
+
+  // Скрываем пункты меню, недоступные роли
+  _applyRoleUI(currentUser.role);
+
+  // Загружаем справочные данные
+  try {
+    [allOrgs, allTeams, allEmployees] = await Promise.all([
+      api('GET', '/organizations'),
+      api('GET', '/teams'),
+      api('GET', '/employees'),
+    ]);
+  } catch(e) {
+    toast('Сервер недоступен. Убедитесь что бэкенд запущен.', 'error');
+    return;
+  }
+
+  // Заполняем фильтры команд
+  const teamOptions = `<option value="">Все команды</option>` +
+    allTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  ['teamFilterSelect','confirmTeamSelect','reportTeamSelect','empTeamFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = teamOptions;
+  });
+
+  // Даты по умолчанию
+  const t = today(), t14 = isoDate(addDays(new Date(), 14));
+  ['teamDateFrom','confirmDateFrom','reportDateFrom'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = t;
+  });
+  ['teamDateTo','confirmDateTo','reportDateTo'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = t14;
+  });
+  ['exportDateFrom'].forEach(id => { const el = document.getElementById(id); if(el) el.value = t; });
+  ['exportDateTo'].forEach(id => { const el = document.getElementById(id); if(el) el.value = t14; });
+
+  // Организации для экспорта
+  document.getElementById('exportOrgSelect').innerHTML =
+    `<option value="">Все организации</option>` +
+    allOrgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+
+  // Скрываем экран входа — показываем приложение
+  document.getElementById('loginScreen').style.display = 'none';
+
+  await loadDashboard();
+}
+
+/**
+ * Скрываем/показываем пункты меню в зависимости от роли.
+ * employee  — только свой календарь
+ * manager   — + команда, подтверждение, отчёты, экспорт
+ * admin     — всё, включая сотрудников и организации
+ */
+function _applyRoleUI(role) {
+  const managerItems = document.querySelectorAll('[data-role-min="manager"]');
+  const adminItems   = document.querySelectorAll('[data-role-min="admin"]');
+  const isManager = role === 'manager' || role === 'admin';
+  const isAdmin   = role === 'admin';
+  managerItems.forEach(el => el.style.display = isManager ? '' : 'none');
+  adminItems.forEach(el =>   el.style.display = isAdmin   ? '' : 'none');
+}
+
+async function init() {
+  // Если токен уже есть в localStorage — пробуем сразу войти
+  if (accessToken) {
+    const ok = await startApp().then(() => true).catch(() => false);
+    if (ok) return;
+  }
+  // Иначе показываем экран логина (он уже видим по умолчанию)
+}
+
+/* ─── Dashboard ───────────────────────────────────────────────────────────── */
+async function loadDashboard() {
+  const dateFrom = today();
+  const dateTo   = isoDate(addDays(new Date(), 14));
+  const [shifts, workload] = await Promise.all([
+    api('GET', `/shifts?date_from=${dateFrom}&date_to=${dateTo}`),
+    api('GET', `/reports/workload?date_from=${dateFrom}&date_to=${dateTo}`),
+  ]);
+  allShifts = shifts;
+
+  const confirmed = shifts.filter(s => s.status === 'confirmed').length;
+  const draft     = shifts.filter(s => s.status === 'draft').length;
+  const totalH    = shifts.reduce((a,s) => a + parseFloat(hours(s.start_time, s.end_time)||0), 0);
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Смен на 14 дней</div>
+      <div class="stat-value">${shifts.length}</div>
+      <div class="stat-sub">в системе</div></div>
+    <div class="stat-card amber"><div class="stat-label">Черновиков</div>
+      <div class="stat-value">${draft}</div>
+      <div class="stat-sub">ожидают подтверждения</div></div>
+    <div class="stat-card green"><div class="stat-label">Подтверждено</div>
+      <div class="stat-value">${confirmed}</div>
+      <div class="stat-sub">смен</div></div>
+    <div class="stat-card teal"><div class="stat-label">Плановых часов</div>
+      <div class="stat-value">${totalH.toFixed(0)}</div>
+      <div class="stat-sub">на период</div></div>
+  `;
+
+  // Workload chart
+  const maxH = Math.max(...workload.map(w => w.total_hours), 1);
+  document.getElementById('workloadChart').innerHTML = workload.map(w => `
+    <div class="workload-bar-wrap">
+      <div class="workload-bar-label">
+        <span>${w.name}</span>
+        <span class="mono">${w.total_hours}ч / ${w.shift_count} смен</span>
+      </div>
+      <div class="workload-bar-track">
+        <div class="workload-bar-fill" style="width:${(w.total_hours/maxH*100).toFixed(1)}%"></div>
+      </div>
+    </div>
+  `).join('');
+
+  // Upcoming table
+  const upcoming = shifts.slice(0, 20);
+  const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e.name]));
+  document.getElementById('upcomingShiftsTable').innerHTML = upcoming.map(s => `
+    <tr>
+      <td>${empMap[s.employee_id] || '—'}</td>
+      <td>${fmt(s.date)}</td>
+      <td class="mono">${fmtT(s.start_time)}</td>
+      <td class="mono">${fmtT(s.end_time)}</td>
+      <td class="mono">${hours(s.start_time, s.end_time)}</td>
+      <td><span class="badge ${STATUS_BADGE[s.status]}">${STATUS_LABEL[s.status]}</span></td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty-state">Смен нет</td></tr>';
+}
+
+/* ─── Calendar ────────────────────────────────────────────────────────────── */
+function setView(v) {
+  calView = v;
+  ['vbMonth','vbWeek','vbDay'].forEach(id => {
+    document.getElementById(id).classList.toggle('active', id === 'vb' + v.charAt(0).toUpperCase() + v.slice(1));
+  });
+  renderCalendar();
+}
+function calNav(dir) {
+  if (calView === 'month') calDate.setMonth(calDate.getMonth() + dir);
+  else if (calView === 'week') calDate.setDate(calDate.getDate() + dir * 7);
+  else calDate.setDate(calDate.getDate() + dir);
+  renderCalendar();
+}
+function calToday() { calDate = new Date(); renderCalendar(); }
+
+async function renderCalendar() {
+  if (!currentUser) return;
+  const empId = currentUser.id;
+
+  // Determine date range to fetch
+  let dateFrom, dateTo;
+  if (calView === 'month') {
+    dateFrom = new Date(calDate.getFullYear(), calDate.getMonth(), 1);
+    dateTo   = new Date(calDate.getFullYear(), calDate.getMonth()+1, 0);
+  } else if (calView === 'week') {
+    const dow = (calDate.getDay() + 6) % 7;
+    dateFrom = addDays(calDate, -dow);
+    dateTo   = addDays(dateFrom, 6);
+  } else {
+    dateFrom = dateTo = new Date(calDate);
+  }
+
+  const shifts = await api('GET',
+    `/shifts?employee_id=${empId}&date_from=${isoDate(dateFrom)}&date_to=${isoDate(dateTo)}`
+  ).catch(() => []);
+
+  const shiftsByDate = {};
+  shifts.forEach(s => { (shiftsByDate[s.date] = shiftsByDate[s.date] || []).push(s); });
+
+  if (calView === 'month') renderMonthView(dateFrom, dateTo, shiftsByDate);
+  else if (calView === 'week') renderWeekView(dateFrom, shiftsByDate);
+  else renderDayView(new Date(calDate), shiftsByDate);
+}
+
+function renderMonthView(dateFrom, dateTo, shiftsByDate) {
+  const d = calDate;
+  document.getElementById('calLabel').textContent = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+
+  const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+  const startDow = (firstDay.getDay() + 6) % 7;
+  const gridStart = addDays(firstDay, -startDow);
+
+  let html = `<div class="cal-month">`;
+  WEEKDAYS.forEach(wd => html += `<div class="cal-dow">${wd}</div>`);
+
+  for (let i = 0; i < 42; i++) {
+    const cell = addDays(gridStart, i);
+    const iso = isoDate(cell);
+    const isToday = iso === today();
+    const isOther = cell.getMonth() !== d.getMonth();
+    const sShifts = shiftsByDate[iso] || [];
+
+    html += `<div class="cal-cell${isOther?' other-month':''}${isToday?' today':''}"
+               onclick="openShiftModalDate('${iso}')">
+      <div class="cal-day">${cell.getDate()}</div>`;
+    sShifts.forEach(s => {
+      html += `<div class="shift-pill ${s.status}" title="${fmtT(s.start_time)}–${fmtT(s.end_time)}"
+                    onclick="event.stopPropagation();editShift(${s.id})">
+        ${fmtT(s.start_time)}–${fmtT(s.end_time)}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+  document.getElementById('calendarBody').innerHTML = html;
+}
+
+function renderWeekView(weekStart, shiftsByDate) {
+  const days = Array.from({length:7}, (_,i) => addDays(weekStart, i));
+  document.getElementById('calLabel').textContent =
+    `${fmt(isoDate(weekStart))} – ${fmt(isoDate(days[6]))}`;
+
+  let html = `<div class="cal-week"><div class="week-header">
+    <div class="week-header-cell">Время</div>`;
+  days.forEach(d => {
+    const iso = isoDate(d);
+    html += `<div class="week-header-cell${iso===today()?' style="background:rgba(245,166,35,.2)"':''}">
+      ${WEEKDAYS[(d.getDay()+6)%7]}<br><b>${d.getDate()}</b></div>`;
+  });
+  html += `</div><div class="week-body"><div class="week-time-col">`;
+  for (let h=7; h<=22; h++) html += `<div class="week-time-slot">${h}:00</div>`;
+  html += `</div>`;
+
+  days.forEach(d => {
+    const iso = isoDate(d);
+    const shifts = shiftsByDate[iso] || [];
+    html += `<div class="week-day-col" style="position:relative">`;
+    for (let h=7; h<=22; h++) html += `<div class="week-slot" onclick="openShiftModalDate('${iso}')"></div>`;
+    shifts.forEach(s => {
+      const [sh,sm] = s.start_time.split(':').map(Number);
+      const [eh,em] = s.end_time.split(':').map(Number);
+      const top = (sh - 7 + sm/60) * 40;
+      const height = (eh - sh + (em - sm)/60) * 40;
+      html += `<div class="week-shift ${s.status}"
+        style="top:${top}px;height:${Math.max(height,20)}px"
+        onclick="editShift(${s.id})" title="${fmtT(s.start_time)}–${fmtT(s.end_time)}">
+        ${fmtT(s.start_time)}–${fmtT(s.end_time)}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div></div>`;
+  document.getElementById('calendarBody').innerHTML = html;
+}
+
+function renderDayView(date, shiftsByDate) {
+  const iso = isoDate(date);
+  document.getElementById('calLabel').textContent = `${WEEKDAYS[(date.getDay()+6)%7]}, ${fmt(iso)}`;
+  const shifts = shiftsByDate[iso] || [];
+  const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e]));
+
+  let html = `<div class="day-view">
+    <div class="day-view-header">${WEEKDAYS[(date.getDay()+6)%7]}, ${fmt(iso)}</div>`;
+  if (!shifts.length) {
+    html += `<div class="empty-state"><div class="icon">📭</div>Смен нет. 
+      <button class="btn btn-amber btn-sm" onclick="openShiftModalDate('${iso}')">Добавить смену</button></div>`;
+  } else {
+    shifts.forEach(s => {
+      const emp = empMap[s.employee_id] || {};
+      const initials = (emp.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2);
+      html += `<div class="day-shift-row">
+        <div class="day-emp-avatar">${initials}</div>
+        <div class="day-emp-name">${emp.name||'—'}</div>
+        <div class="day-shift-time">${fmtT(s.start_time)} – ${fmtT(s.end_time)}</div>
+        <span class="badge ${STATUS_BADGE[s.status]}">${STATUS_LABEL[s.status]}</span>
+        <button class="btn btn-ghost btn-sm" onclick="editShift(${s.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteShift(${s.id})">🗑</button>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+  document.getElementById('calendarBody').innerHTML = html;
+}
+
+/* ─── Shift CRUD ──────────────────────────────────────────────────────────── */
+function openShiftModal() {
+  document.getElementById('shiftId').value = '';
+  document.getElementById('shiftModalTitle').textContent = 'Новая смена';
+  document.getElementById('shiftDate').value = today();
+  document.getElementById('shiftStart').value = '09:00';
+  document.getElementById('shiftEnd').value = '18:00';
+  document.getElementById('shiftNotes').value = '';
+  populateShiftEmployee();
+  openModal('shiftModal');
+}
+function openShiftModalDate(date) {
+  openShiftModal();
+  document.getElementById('shiftDate').value = date;
+}
+async function editShift(id) {
+  const s = await api('GET', `/shifts/${id}`);
+  document.getElementById('shiftId').value = s.id;
+  document.getElementById('shiftModalTitle').textContent = 'Редактировать смену';
+  document.getElementById('shiftEmployee').value = s.employee_id;
+  document.getElementById('shiftDate').value = s.date;
+  document.getElementById('shiftStart').value = s.start_time.slice(0,5);
+  document.getElementById('shiftEnd').value = s.end_time.slice(0,5);
+  document.getElementById('shiftType').value = s.shift_type;
+  document.getElementById('shiftNotes').value = s.notes || '';
+  populateShiftEmployee(s.employee_id);
+  openModal('shiftModal');
+}
+function populateShiftEmployee(selectedId) {
+  const sel = document.getElementById('shiftEmployee');
+  sel.innerHTML = allEmployees.map(e =>
+    `<option value="${e.id}"${e.id == (selectedId || currentUser?.id) ? ' selected':''}>${e.name}</option>`
+  ).join('');
+}
+async function saveShift() {
+  const id = document.getElementById('shiftId').value;
+
+  // Читаем все поля формы
+  const employeeId = parseInt(document.getElementById('shiftEmployee').value);
+  const dateVal    = document.getElementById('shiftDate').value;
+  const startVal   = document.getElementById('shiftStart').value;
+  const endVal     = document.getElementById('shiftEnd').value;
+  const typeVal    = document.getElementById('shiftType').value;
+  const notesVal   = document.getElementById('shiftNotes').value.trim();
+
+  // Базовая валидация на клиенте
+  if (!dateVal)  { toast('Укажите дату', 'error'); return; }
+  if (!startVal) { toast('Укажите начало смены', 'error'); return; }
+  if (!endVal)   { toast('Укажите конец смены', 'error'); return; }
+  if (startVal >= endVal) { toast('Конец смены должен быть позже начала', 'error'); return; }
+
+  try {
+    if (id) {
+      // PUT — передаём ВСЕ поля явно; exclude_unset на бэкенде
+      // увидит их все и применит, включая очистку notes
+      const body = {
+        employee_id: employeeId,
+        date:        dateVal,
+        start_time:  startVal,
+        end_time:    endVal,
+        shift_type:  typeVal,
+        notes:       notesVal || null,  // null очищает примечание в БД
+      };
+      await api('PUT', `/shifts/${id}`, body);
+      toast('✅ Смена обновлена');
+    } else {
+      const body = {
+        employee_id: employeeId,
+        date:        dateVal,
+        start_time:  startVal,
+        end_time:    endVal,
+        shift_type:  typeVal,
+        notes:       notesVal || null,
+      };
+      await api('POST', '/shifts', body);
+      toast('✅ Смена добавлена');
+    }
+    closeModal('shiftModal');
+    await _refreshAllShiftViews();
+  } catch(e) { toast(e.message, 'error'); }
+}
+/** Обновляет все представления смен одновременно (параллельно).
+ *  Вызывается после любого изменения (сохранение / удаление / подтверждение).
+ *  async + Promise.allSettled — если один запрос упадёт, остальные продолжатся. */
+async function _refreshAllShiftViews() {
+  const tasks = [
+    renderCalendar(),    // личный календарь
+    loadDashboard(),     // дашборд — счётчики и статистика
+    loadTeamCalendar(),  // график команды
+  ];
+  // Обновляем страницу подтверждений только если она активна
+  const confirmPage = document.getElementById('page-confirm');
+  if (confirmPage && confirmPage.classList.contains('active')) {
+    tasks.push(loadConfirmShifts());
+  }
+  // allSettled — не падаем если один запрос вернул ошибку
+  await Promise.allSettled(tasks);
+}
+
+async function deleteShift(id) {
+  if (!confirm('Удалить смену?')) return;
+  try {
+    await api('DELETE', `/shifts/${id}`);
+  } catch(e) { toast(e.message, 'error'); return; }
+  toast('🗑 Смена удалена');
+  await _refreshAllShiftViews();
+}
+
+/* ─── Team calendar ───────────────────────────────────────────────────────── */
+async function loadTeamCalendar() {
+  const teamId = document.getElementById('teamFilterSelect').value;
+  const df = document.getElementById('teamDateFrom').value;
+  const dt = document.getElementById('teamDateTo').value;
+
+  let url = `/shifts?date_from=${df}&date_to=${dt}`;
+  if (teamId) url += `&team_id=${teamId}`;
+
+  const shifts = await api('GET', url).catch(() => []);
+  const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e]));
+  const teamMap = Object.fromEntries(allTeams.map(t => [t.id, t.name]));
+
+  document.getElementById('teamShiftsTable').innerHTML = shifts.map(s => {
+    const emp = empMap[s.employee_id] || {};
+    return `<tr>
+      <td>${emp.name||'—'}</td>
+      <td>${teamMap[emp.team_id]||'—'}</td>
+      <td>${fmt(s.date)}</td>
+      <td>${WEEKDAYS[new Date(s.date+'T00:00').getDay()===0?6:new Date(s.date+'T00:00').getDay()-1]}</td>
+      <td class="mono">${fmtT(s.start_time)}</td>
+      <td class="mono">${fmtT(s.end_time)}</td>
+      <td class="mono">${hours(s.start_time, s.end_time)}</td>
+      <td><span class="badge ${STATUS_BADGE[s.status]}">${STATUS_LABEL[s.status]}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editShift(${s.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteShift(${s.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="9"><div class="empty-state">Смен нет</div></td></tr>`;
+}
+
+/* ─── Confirm ─────────────────────────────────────────────────────────────── */
+async function loadConfirmShifts() {
+  const teamId = document.getElementById('confirmTeamSelect').value;
+  const df = document.getElementById('confirmDateFrom').value;
+  const dt = document.getElementById('confirmDateTo').value;
+
+  let url = `/shifts?date_from=${df}&date_to=${dt}&status=draft`;
+  if (teamId) url += `&team_id=${teamId}`;
+  const shifts = await api('GET', url).catch(() => []);
+  const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e.name]));
+
+  document.getElementById('confirmTable').innerHTML = shifts.map(s => `
+    <tr>
+      <td>${empMap[s.employee_id]||'—'}</td>
+      <td>${fmt(s.date)}</td>
+      <td class="mono">${fmtT(s.start_time)}</td>
+      <td class="mono">${fmtT(s.end_time)}</td>
+      <td class="mono">${fmtT(s.actual_start_time)}</td>
+      <td class="mono">${fmtT(s.actual_end_time)}</td>
+      <td><span class="badge ${STATUS_BADGE[s.status]}">${STATUS_LABEL[s.status]}</span></td>
+      <td>
+        <button class="btn btn-success btn-sm" onclick="openConfirmModal(${s.id})">✅ Подтвердить</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="8"><div class="empty-state">Нет смен для подтверждения</div></td></tr>`;
+}
+
+async function openConfirmModal(shiftId) {
+  const s = await api('GET', `/shifts/${shiftId}`);
+  const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e.name]));
+  document.getElementById('confirmShiftId').value = shiftId;
+  document.getElementById('confirmShiftInfo').innerHTML = `
+    <b>${empMap[s.employee_id]||'—'}</b> · ${fmt(s.date)}<br>
+    Начало план: <span class="mono">${fmtT(s.start_time)}</span> &nbsp;
+    Конец план: <span class="mono">${fmtT(s.end_time)}</span>
+  `;
+  document.getElementById('factStart').value = s.start_time?.slice(0,5) || '';
+  document.getElementById('factEnd').value = s.end_time?.slice(0,5) || '';
+  openModal('confirmModal');
+}
+
+async function submitConfirm() {
+  const shiftId = document.getElementById('confirmShiftId').value;
+  const body = {
+    // confirmed_by_id теперь берётся сервером из JWT-токена
+    actual_start_time: document.getElementById('factStart').value || null,
+    actual_end_time:   document.getElementById('factEnd').value || null,
+    status: document.getElementById('confirmDecision').value,
+  };
+  try {
+    await api('POST', `/shifts/${shiftId}/confirm`, body);
+    toast('Смена обновлена');
+    closeModal('confirmModal');
+    loadConfirmShifts();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ─── Reports ─────────────────────────────────────────────────────────────── */
+async function loadReport() {
+  const teamId = document.getElementById('reportTeamSelect').value;
+  const df = document.getElementById('reportDateFrom').value;
+  const dt = document.getElementById('reportDateTo').value;
+
+  let url = `/reports/plan-fact?date_from=${df}&date_to=${dt}`;
+  if (teamId) url += `&team_id=${teamId}`;
+  const rows = await api('GET', url).catch(() => []);
+
+  const totalPlan = rows.reduce((a,r) => a + (r.planned_hours||0), 0);
+  const totalAct  = rows.reduce((a,r) => a + (r.actual_hours||0), 0);
+  const delta = totalAct - totalPlan;
+
+  document.getElementById('reportSummaryCards').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Плановых часов</div>
+      <div class="stat-value">${totalPlan.toFixed(1)}</div></div>
+    <div class="stat-card teal"><div class="stat-label">Фактических часов</div>
+      <div class="stat-value">${totalAct.toFixed(1)}</div></div>
+    <div class="stat-card ${delta<0?'':'green'}"><div class="stat-label">Отклонение</div>
+      <div class="stat-value">${delta>0?'+':''}${delta.toFixed(1)}</div></div>
+    <div class="stat-card amber"><div class="stat-label">Записей</div>
+      <div class="stat-value">${rows.length}</div></div>
+  `;
+
+  document.getElementById('reportTable').innerHTML = rows.map(r => {
+    const d = r.delta_hours;
+    const dStyle = d===null?'' : d<0?'color:var(--red)':d>0?'color:var(--green)':'';
+    return `<tr>
+      <td>${r.employee_name}</td>
+      <td>${fmt(r.date)}</td>
+      <td class="mono">${fmtT(r.planned_start)}</td>
+      <td class="mono">${fmtT(r.planned_end)}</td>
+      <td class="mono">${r.planned_hours?.toFixed(1)||'—'}</td>
+      <td class="mono">${fmtT(r.actual_start)}</td>
+      <td class="mono">${fmtT(r.actual_end)}</td>
+      <td class="mono">${r.actual_hours?.toFixed(1)||'—'}</td>
+      <td class="mono" style="${dStyle}">${d!==null?(d>0?'+':'')+d.toFixed(1):'—'}</td>
+      <td><span class="badge ${STATUS_BADGE[r.status]}">${STATUS_LABEL[r.status]}</span></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="10"><div class="empty-state">Нет данных</div></td></tr>`;
+}
+
+/* ─── Export ──────────────────────────────────────────────────────────────── */
+function loadExportTeams() {
+  const orgId = document.getElementById('exportOrgSelect').value;
+  const teams = orgId ? allTeams.filter(t => t.organization_id == orgId) : allTeams;
+  document.getElementById('exportTeamSelect').innerHTML =
+    `<option value="">Все подразделения</option>` +
+    teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+async function doExport() {
+  const orgId  = document.getElementById('exportOrgSelect').value;
+  const teamId = document.getElementById('exportTeamSelect').value;
+  const df = document.getElementById('exportDateFrom').value;
+  const dt = document.getElementById('exportDateTo').value;
+  if (!df || !dt) { toast('Укажите период', 'error'); return; }
+
+  let url = `${API}/shifts/export/excel?date_from=${df}&date_to=${dt}`;
+  if (teamId) url += `&team_id=${teamId}`;
+  else if (orgId) url += `&organization_id=${orgId}`;
+
+  // window.open() не передаёт Authorization заголовок — используем fetch
+  try {
+    toast('Формируем файл…');
+    const response = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      let msg = typeof err.detail === 'string' ? err.detail
+              : Array.isArray(err.detail) ? err.detail.map(e => e.msg).join('; ')
+              : `HTTP ${response.status}`;
+      throw new Error(msg);
+    }
+    const blob = await response.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `schedule_${df}_${dt}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ Файл скачан');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ─── Employees ───────────────────────────────────────────────────────────── */
+async function loadEmployees() {
+  const teamId = document.getElementById('empTeamFilter').value;
+  let url = '/employees';
+  if (teamId) url += `?team_id=${teamId}`;
+  const emps = await api('GET', url).catch(() => []);
+  const teamMap = Object.fromEntries(allTeams.map(t => [t.id, t.name]));
+  const ROLE = {employee:'Сотрудник', manager:'Руководитель', admin:'Администратор'};
+
+  document.getElementById('empTable').innerHTML = emps.map(e => `
+    <tr>
+      <td>${e.name}</td>
+      <td>${e.email}</td>
+      <td>${e.position||'—'}</td>
+      <td>${teamMap[e.team_id]||'—'}</td>
+      <td><span class="badge badge-draft">${ROLE[e.role]||e.role}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deactivateEmp(${e.id})">Деакт.</button></td>
+    </tr>
+  `).join('') || `<tr><td colspan="6"><div class="empty-state">Сотрудников нет</div></td></tr>`;
+}
+function openEmpModal() {
+  document.getElementById('empTeam').innerHTML =
+    `<option value="">— без команды —</option>` +
+    allTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  openModal('empModal');
+}
+async function saveEmployee() {
+  const body = {
+    name:     document.getElementById('empName').value,
+    email:    document.getElementById('empEmail').value,
+    password: document.getElementById('empPassword').value,
+    position: document.getElementById('empPosition').value || null,
+    role:     document.getElementById('empRole').value,
+    team_id:  parseInt(document.getElementById('empTeam').value) || null,
+  };
+  try {
+    await api('POST', '/employees', body);
+    allEmployees = await api('GET', '/employees');
+    toast('Сотрудник добавлен');
+    closeModal('empModal');
+    loadEmployees();
+  } catch(e) { toast(e.message, 'error'); }
+}
+async function deactivateEmp(id) {
+  if (!confirm('Деактивировать сотрудника?')) return;
+  await api('DELETE', `/employees/${id}`);
+  toast('Сотрудник деактивирован');
+  loadEmployees();
+}
+
+/* ─── Orgs & Teams ────────────────────────────────────────────────────────── */
+async function loadOrgs() {
+  const [orgs, teams] = await Promise.all([
+    api('GET', '/organizations'),
+    api('GET', '/teams'),
+  ]);
+  allOrgs = orgs; allTeams = teams;
+
+  document.getElementById('orgList').innerHTML = orgs.map(o => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div><b>${o.name}</b><div class="text-muted">${o.description||''}</div></div>
+      <button class="btn btn-danger btn-sm" onclick="deleteOrg(${o.id})">🗑</button>
+    </div>
+  `).join('') || '<div class="empty-state">Нет организаций</div>';
+
+  const orgMap = Object.fromEntries(orgs.map(o => [o.id, o.name]));
+  const teamMap = Object.fromEntries(teams.map(t => [t.id, t.name]));
+
+  function renderTree(list, parentId=null, depth=0) {
+    return list.filter(t => t.parent_team_id === parentId || (parentId===null && !t.parent_team_id))
+      .map(t => `
+        <div style="padding-left:${depth*20}px;padding:8px 0 8px ${depth*16}px;border-bottom:1px solid var(--border)">
+          ${depth>0?'└ ':''}<b>${t.name}</b>
+          <span class="text-muted"> · ${orgMap[t.organization_id]||'?'}</span>
+          <button class="btn btn-danger btn-sm" style="float:right" onclick="deleteTeam(${t.id})">🗑</button>
+          ${renderTree(list, t.id, depth+1)}
+        </div>
+      `).join('');
+  }
+
+  document.getElementById('teamList').innerHTML = renderTree(teams) ||
+    '<div class="empty-state">Нет команд</div>';
+}
+
+function openOrgModal() { openModal('orgModal'); }
+async function saveOrg() {
+  const body = {
+    name: document.getElementById('orgName').value,
+    description: document.getElementById('orgDesc').value || null,
+  };
+  try {
+    await api('POST', '/organizations', body);
+    toast('Организация добавлена');
+    closeModal('orgModal');
+    loadOrgs();
+  } catch(e) { toast(e.message, 'error'); }
+}
+async function deleteOrg(id) {
+  if (!confirm('Удалить организацию?')) return;
+  await api('DELETE', `/organizations/${id}`);
+  toast('Удалено'); loadOrgs();
+}
+
+function openTeamModal() {
+  document.getElementById('teamOrgSelect').innerHTML =
+    allOrgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+  document.getElementById('teamParentSelect').innerHTML =
+    `<option value="">— нет (корневая) —</option>` +
+    allTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  openModal('teamModal');
+}
+async function saveTeam() {
+  const body = {
+    name: document.getElementById('teamName').value,
+    organization_id: parseInt(document.getElementById('teamOrgSelect').value),
+    parent_team_id: parseInt(document.getElementById('teamParentSelect').value) || null,
+  };
+  try {
+    await api('POST', '/teams', body);
+    allTeams = await api('GET', '/teams');
+    toast('Команда добавлена');
+    closeModal('teamModal');
+    loadOrgs();
+  } catch(e) { toast(e.message, 'error'); }
+}
+async function deleteTeam(id) {
+  if (!confirm('Удалить команду?')) return;
+  await api('DELETE', `/teams/${id}`);
+  toast('Удалено'); loadOrgs();
+}
+
+/* ─── Init ────────────────────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
