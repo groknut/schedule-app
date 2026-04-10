@@ -16,12 +16,16 @@
 ## Быстрый старт
 
 ### 1. Установить зависимости
+Используя `pip`
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
+Используя `uv`
+```bash
+uv sync
+```
 ### 2. Запустить сервер
 ```bash
 cd backend
